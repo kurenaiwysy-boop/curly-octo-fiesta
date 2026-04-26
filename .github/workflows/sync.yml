@@ -1,0 +1,22 @@
+name: Sync Firecrawl Image
+on: [push] # 你点保存，它就自动开始搬运
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Pull and Push
+        run: |
+          # 1. 在海外服务器拉取
+          docker pull mendable/firecrawl:latest
+          # 2. 打标签
+          docker tag mendable/firecrawl:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
+          # 3. 推送到阿里云
+          docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
