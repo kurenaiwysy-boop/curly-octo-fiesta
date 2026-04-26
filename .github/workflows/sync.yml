@@ -1,5 +1,5 @@
 name: Sync Firecrawl Image
-on: [push] # 你点保存，它就自动开始搬运
+on: [push]
 
 jobs:
   build:
@@ -14,9 +14,11 @@ jobs:
 
       - name: Pull and Push
         run: |
-          # 1. 在海外服务器拉取
-          docker pull mendable/firecrawl:latest
-          # 2. 打标签
-          docker tag mendable/firecrawl:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
-          # 3. 推送到阿里云
+          # 1. 修正后的正确镜像名：mendableai/firecrawl
+          docker pull mendableai/firecrawl:latest
+          
+          # 2. 打标签（推送到你的阿里云）
+          docker tag mendableai/firecrawl:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
+          
+          # 3. 推送
           docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
