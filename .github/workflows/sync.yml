@@ -1,25 +1,28 @@
-name: Sync Firecrawl Image
-on: [push]
+name: Sync MinerU Image
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # 允许你在 Actions 页面手动点按钮运行
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Login to Aliyun
-        uses: docker/login-action@v3
-        with:
-          registry: crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com
-          username: ${{ secrets.ALIYUN_USERNAME }}
-          password: ${{ secrets.ALIYUN_PASSWORD }}
+    - name: Login to Aliyun
+      uses: docker/login-action@v3
+      with:
+        registry: crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com
+        username: ${{ secrets.ALIYUN_USERNAME }}
+        password: ${{ secrets.ALIYUN_PASSWORD }}
 
-
-      - name: Pull and Push MinerU
-        run: |
-          # 1. 拉取 MinerU 官方镜像 (或者你需要的其他镜像源)
-          docker pull opendatalab/magic-pdf:latest
-          
-          # 2. 打标签，指向你刚创建的新仓库 mineru
-          docker tag opendatalab/magic-pdf:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
-          
-          # 3. 推送
-          docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
+    - name: Pull and Push MinerU
+      run: |
+        # 1. 拉取官方镜像
+        docker pull opendatalab/magic-pdf:latest
+        
+        # 2. 打标签 (必须写在同一行，注意空格)
+        docker tag opendatalab/magic-pdf:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
+        
+        # 3. 推送到阿里云 (必须写在同一行)
+        docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
