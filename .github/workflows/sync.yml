@@ -12,13 +12,14 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Pull and Push
+
+      - name: Pull and Push MinerU
         run: |
-          # 1. 使用官方最新的 GHCR 镜像路径
-          docker pull ghcr.io/firecrawl/firecrawl:latest
+          # 1. 拉取 MinerU 官方镜像 (或者你需要的其他镜像源)
+          docker pull opendatalab/magic-pdf:latest
           
-          # 2. 打标签推送到你的阿里云北京仓库
-          docker tag ghcr.io/firecrawl/firecrawl:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
+          # 2. 打标签，指向你刚创建的新仓库 mineru
+          docker tag opendatalab/magic-pdf:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
           
           # 3. 推送
-          docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/yunjiasu:latest
+          docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
