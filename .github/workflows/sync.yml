@@ -18,11 +18,10 @@ jobs:
 
     - name: Pull and Push MinerU
       run: |
-        # 1. 拉取官方 MinerU (Magic-PDF) 镜像
-        docker pull opendatalab/magic-pdf:latest
+        # 尝试拉取 MinerU 的全功能版本 (Magic-PDF)
+        docker pull opendatalab/magic-pdf:v0.6.2 || docker pull opendatalab/magic-pdf:v0.1.0
         
-        # 2. 打标签 (必须是完整的一行，注意空格)
-        docker tag opendatalab/magic-pdf:latest crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
+        # 这里的标签也要对应修改
+        docker tag opendatalab/magic-pdf:v0.6.2 crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
         
-        # 3. 推送到你的阿里云仓库
         docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
