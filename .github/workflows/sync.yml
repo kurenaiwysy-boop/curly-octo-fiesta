@@ -1,9 +1,21 @@
-name: Sync MinerU Image
+name: Universal Docker Image Sync
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: # 允许你手动点击按钮触发
+  workflow_dispatch:
+    inputs:
+      source_image:
+        description: '源镜像地址 (例如: continuedev/continue:latest)'
+        required: true
+        type: string
+      target_name:
+        description: '阿里云上的名字 (例如: continue)'
+        required: true
+        type: string
+      target_tag:
+        description: '阿里云上的版本号 (例如: latest)'
+        required: true
+        default: 'latest'
+        type: string
 
 jobs:
   build:
@@ -16,12 +28,13 @@ jobs:
         username: ${{ secrets.ALIYUN_USERNAME }}
         password: ${{ secrets.ALIYUN_PASSWORD }}
 
-    - name: Pull and Push MinerU
+    - name: Pull, Tag, and Push
       run: |
-        # 尝试拉取 MinerU 的全功能版本 (Magic-PDF)
-        docker pull opendatalab/magic-pdf:v0.6.2 || docker pull opendatalab/magic-pdf:v0.1.0
+        echo "1. 正在从 Docker Hub 拉取源镜像: ${{ github.event.inputs.source_image }}..."
+        docker pull ${{ github.event.inputs.source_image }}
         
-        # 这里的标签也要对应修改
-        docker tag opendatalab/magic-pdf:v0.6.2 crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
+        echo "2. 正在打上阿里云的标签..."
+        docker tag ${{ github.event.inputs.source_image }} crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/${{ github.event.inputs.target_name }}:${{ github.event.inputs.target_tag }}
         
-        docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/mineru:latest
+        echo "3. 正在推送到阿里云个人仓库..."
+        docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/${{ github.event.inputs.target_name }}:${{ github.event.inputs.target_tag }}
