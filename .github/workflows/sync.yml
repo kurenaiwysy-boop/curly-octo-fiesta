@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_image:
-        description: '源镜像地址，建议加上docker.io/前缀 (例如: continuedev/continue:latest)'
+        description: '源镜像地址，建议加上docker.io/&ordhcr.io/前缀 (例如: continuedev/continue:latest)'
         required: true
         type: string
       target_name:
