@@ -3,18 +3,13 @@ name: Universal Docker Image Sync
 on:
   workflow_dispatch:
     inputs:
-      source_image:
-        description: '源镜像地址，建议加上docker.io/&ghcr.io/前缀 (例如: continuedev/continue:latest)'
+      repo_name:
+        description: 'GitHub仓库名称 (例如: continuedev/continue)'
         required: true
         type: string
       target_name:
-        description: '阿里云上的名字 (例如: continue)'
+        description: '推送到阿里云的名字 (例如: continue)'
         required: true
-        type: string
-      target_tag:
-        description: '阿里云上的版本号 (例如: latest)'
-        required: true
-        default: 'latest'
         type: string
 
 jobs:
@@ -27,16 +22,47 @@ jobs:
         registry: crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com
         username: ${{ secrets.ALIYUN_USERNAME }}
         password: ${{ secrets.ALIYUN_PASSWORD }}
-    - name: Login to GHCR
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Pull, Tag, and Push
+    - name: Login to GHCR (GitHub Container Registry)
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Dynamic Fetch, Pull, Tag, and Push
       run: |
-        echo "1. 正在从 Docker Hub 拉取源镜像: ${{ github.event.inputs.source_image }}..."
-        docker pull ${{ github.event.inputs.source_image }}
+        REPO="${{ github.event.inputs.repo_name }}"
+        TARGET_NAME="${{ github.event.inputs.target_name }}"
         
-        echo "2. 正在打上阿里云的标签..."
-        docker tag ${{ github.event.inputs.source_image }} crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/${{ github.event.inputs.target_name }}:${{ github.event.inputs.target_tag }}
+        # 1. 动态请求 GitHub API 获取该仓库的最新 Release 版本号
+        echo "正在查询 $REPO 的最新版本..."
+        LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r .tag_name)
         
-        echo "3. 正在推送到阿里云个人仓库..."
-        docker push crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/${{ github.event.inputs.target_name }}:${{ github.event.inputs.target_tag }}
+        # 如果仓库没有打 Release 标签，默认使用 'latest'
+        if [ "$LATEST_TAG" == "null" ] || [ -z "$LATEST_TAG" ]; then
+          echo "未找到 Release 版本，默认使用 latest 标签"
+          LATEST_TAG="latest"
+        else
+          echo "检测到最新版本: $LATEST_TAG"
+        fi
+        
+        # 2. 组装目标镜像地址
+        TARGET_IMAGE="crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/$TARGET_NAME:$LATEST_TAG"
+        
+        # 3. 优先尝试从 ghcr.io 拉取，带身份验证
+        SOURCE_IMAGE="ghcr.io/$REPO:$LATEST_TAG"
+        echo "尝试从 GHCR 拉取: $SOURCE_IMAGE"
+        
+        # 如果 GHCR 拉取失败（比如作者没发到 GHCR），通过 || 符号自动回退到 Docker Hub 尝试
+        docker pull $SOURCE_IMAGE || \
+        (echo "GHCR 拉取失败，自动回退尝试从 Docker Hub 拉取..." && \
+         SOURCE_IMAGE="$REPO:$LATEST_TAG" && \
+         docker pull $SOURCE_IMAGE)
+        
+        # 4. 打标签并推送
+        echo "打上阿里云标签: $TARGET_IMAGE"
+        docker tag $SOURCE_IMAGE $TARGET_IMAGE
+        
+        echo "推送到阿里云个人仓库..."
+        docker push $TARGET_IMAGE
