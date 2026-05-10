@@ -27,6 +27,8 @@ jobs:
         registry: crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com
         username: ${{ secrets.ALIYUN_USERNAME }}
         password: ${{ secrets.ALIYUN_PASSWORD }}
+    - name: Login to GHCR
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Pull, Tag, and Push
       run: |
