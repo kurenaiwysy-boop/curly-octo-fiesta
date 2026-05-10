@@ -23,7 +23,7 @@ jobs:
         username: ${{ secrets.ALIYUN_USERNAME }}
         password: ${{ secrets.ALIYUN_PASSWORD }}
 
-    - name: Login to GHCR (GitHub Container Registry)
+    - name: Login to GHCR
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -35,34 +35,46 @@ jobs:
         REPO="${{ github.event.inputs.repo_name }}"
         TARGET_NAME="${{ github.event.inputs.target_name }}"
         
-        # 1. 动态请求 GitHub API 获取该仓库的最新 Release 版本号
-        echo "正在查询 $REPO 的最新版本..."
-        LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r .tag_name)
+        # 1. 获取最新 Release 标签
+        RAW_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r .tag_name)
         
-        # 如果仓库没有打 Release 标签，默认使用 'latest'
-        if [ "$LATEST_TAG" == "null" ] || [ -z "$LATEST_TAG" ]; then
-          echo "未找到 Release 版本，默认使用 latest 标签"
+        if [ "$RAW_TAG" == "null" ] || [ -z "$RAW_TAG" ]; then
           LATEST_TAG="latest"
         else
-          echo "检测到最新版本: $LATEST_TAG"
+          # 【核心修复】清洗标签：去除开头的 'v'，去除末尾的 '-vscode' 或 '-extension'
+          # 这样 v1.2.22-vscode 就会变成 1.2.22，这更符合 Docker 镜像的命名习惯
+          LATEST_TAG=$(echo $RAW_TAG | sed 's/^v//' | sed 's/-vscode//g' | sed 's/-extension//g')
+          echo "检测到 Release: $RAW_TAG -> 转换镜像标签: $LATEST_TAG"
         fi
-        
-        # 2. 组装目标镜像地址
-        TARGET_IMAGE="crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/$TARGET_NAME:$LATEST_TAG"
-        
-        # 3. 优先尝试从 ghcr.io 拉取，带身份验证
-        SOURCE_IMAGE="ghcr.io/$REPO:$LATEST_TAG"
-        echo "尝试从 GHCR 拉取: $SOURCE_IMAGE"
-        
-        # 如果 GHCR 拉取失败（比如作者没发到 GHCR），通过 || 符号自动回退到 Docker Hub 尝试
-        docker pull $SOURCE_IMAGE || \
-        (echo "GHCR 拉取失败，自动回退尝试从 Docker Hub 拉取..." && \
-         SOURCE_IMAGE="$REPO:$LATEST_TAG" && \
-         docker pull $SOURCE_IMAGE)
-        
-        # 4. 打标签并推送
-        echo "打上阿里云标签: $TARGET_IMAGE"
+
+        # 2. 尝试多种可能的标签组合进行拉取
+        # 组合顺序：清洗后的标签 -> 原始标签 -> latest
+        success=false
+        for tag in "$LATEST_TAG" "$RAW_TAG" "latest"; do
+          echo "正在尝试从 GHCR 拉取标签: $tag ..."
+          if docker pull ghcr.io/$REPO:$tag; then
+            SOURCE_IMAGE="ghcr.io/$REPO:$tag"
+            success=true
+            FINAL_TAG=$tag
+            break
+          fi
+          
+          echo "正在尝试从 Docker Hub 拉取标签: $tag ..."
+          if docker pull $REPO:$tag; then
+            SOURCE_IMAGE="$REPO:$tag"
+            success=true
+            FINAL_TAG=$tag
+            break
+          fi
+        done
+
+        if [ "$success" = false ]; then
+          echo "错误：无法在 GHCR 或 Docker Hub 找到任何可用镜像标签。"
+          exit 1
+        fi
+
+        # 3. 打标签并推送
+        TARGET_IMAGE="crpi-ijj9zfzhl4gaftp8.cn-beijing.personal.cr.aliyuncs.com/yunjiasu/$TARGET_NAME:$FINAL_TAG"
+        echo "成功！正在推送 $SOURCE_IMAGE 到 $TARGET_IMAGE"
         docker tag $SOURCE_IMAGE $TARGET_IMAGE
-        
-        echo "推送到阿里云个人仓库..."
         docker push $TARGET_IMAGE
